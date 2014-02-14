@@ -19,11 +19,11 @@ class SQLObject < MassObject
     
     #convert to symbols
     columns.map(&:to_sym).each do |attr_name|
-      self.define_method(name) do
-        @attributes[name]
+      self.send(:define_method, attr_name) do
+        @attributes[attr_name]
       end
-      self.define_method(name + "=") do |val|
-        @attributes[name] = val
+      self.send(:define_method, (attr_name.to_s + "=")) do |val|
+        @attributes[attr_name] = val
       end
     end      
     
@@ -63,12 +63,17 @@ class SQLObject < MassObject
   end
 
   def insert
-    # ...
+    DBConnection.instance.execute2(<<-SQL)
+    INSERT INTO
+      #{@table_name}
+    VALUES
+      
+    SQL
   end
 
   def initialize(params= {})
     params.each do |attr_name, value|
-      raise "unknown attribute '#{attr_name}'" unless self.class.columns.include? attr_name.pluralize
+      raise "unknown attribute '#{attr_name}'" unless self.class.columns.include? attr_name.to_s.pluralize
     end
   end
 
