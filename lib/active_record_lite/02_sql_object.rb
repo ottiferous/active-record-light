@@ -4,37 +4,29 @@ require 'active_support/inflector'
 
 class MassObject
   def self.parse_all(results)
-    
-    object_array = []
-    results.each do |object_hash|
-      object_hash.each do |key, value| 
-        p "#{key} => #{value}"
-        new_class.send(:define_method, key) do
-          get_instance_variable("@#{key}")
-        end
-        
-        new_class.send(:define_method, (key.to_s + "=")) do
-          set_instance_variable("@#{key}", value )
-        end
-      end
-        p "class.name -- #{new_class.name}"
-        # p "class.owner_id -- #{new_class.owner_id}"
-      
-      object_array << new_class
+    results.each do |object|
+      new_obj = self.new(object)
     end
-    
-    object_array
-  end  
+  end
 end
 
-class Cat < SQLObject
-end
-
-Cat.parse_all([{:name => "Haskell", :owner_id => 1}])
+# Cat.parse_all([{:name => "Haskell", :owner_id => 1}])
 
 class SQLObject < MassObject
   def self.columns
-    # ...
+    query = "SELECT * FROM #{self.table_name}"
+    columns = (DBConnection.instance.execute2 query)[0]
+    
+    #convert to symbols
+    columns.map(&:to_sym).each do |attr_name|
+      self.define_method(name) do
+        @attributes[name]
+      end
+      self.define_method(name + "=") do |val|
+        @attributes[name] = val
+      end
+    end      
+    
   end
 
   def self.table_name=(table_name)
@@ -46,23 +38,38 @@ class SQLObject < MassObject
   end
 
   def self.all
-    # ...
+    data = DBConnection.instance.execute2(<<-SQL)
+          SELECT
+            *
+          FROM
+          #{@table_name}
+        SQL
+    self.parse_all(data)
   end
 
   def self.find(id)
-    # ...
+    DBConnection.instance.execute2(<<-SQL)
+    SELECT
+      *
+    FROM
+      #{@table_name}
+    WHERE
+      id = #{id}
+    SQL
   end
 
   def attributes
-    # ...
+    @atrributes ||= {}
   end
 
   def insert
     # ...
   end
 
-  def initialize
-    # ...
+  def initialize(params= {})
+    params.each do |attr_name, value|
+      raise "unknown attribute '#{attr_name}'" unless self.class.columns.include? attr_name.pluralize
+    end
   end
 
   def save
