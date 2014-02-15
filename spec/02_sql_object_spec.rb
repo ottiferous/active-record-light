@@ -28,7 +28,7 @@ describe SQLObject do
         { :name => "cat1", :owner_id => 1 },
         { :name => "cat2", :owner_id => 2 }
       ]
-
+  
       cats = Cat.parse_all(hashes)
       expect(cats.length).to eq(2)
       hashes.each_index do |i|

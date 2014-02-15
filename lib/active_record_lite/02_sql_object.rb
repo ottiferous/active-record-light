@@ -3,58 +3,52 @@ require_relative '01_mass_object'
 require 'active_support/inflector'
 
 class MassObject
+  # Cat.parse_all([{:name => "Haskell", :owner_id => 1}])
   def self.parse_all(results)
-    results.each do |object|
-      new_obj = self.new(object)
+    results.each do |hash_object|           # e.g. {:name=>"cat1", :owner_id=>1}
+      new_obj = self.new(hash_object)
     end
   end
 end
-
-# Cat.parse_all([{:name => "Haskell", :owner_id => 1}])
 
 class SQLObject < MassObject
   def self.columns
     query = "SELECT * FROM #{self.table_name}"
     columns = (DBConnection.instance.execute2 query)[0]
     
-    #convert to symbols
-    columns.map(&:to_sym).each do |attr_name|
-      self.send(:define_method, attr_name) do
-        @attributes[attr_name]
-      end
-      self.send(:define_method, (attr_name.to_s + "=")) do |val|
-        @attributes[attr_name] = val
-      end
-    end      
-    
+    columns.map do |name|
+      define_method(name) { self.attributes[name] }
+      define_method("#{name}=") { |val| self.attributes[name] = val }
+    end
+    columns.map(&:to_sym)
   end
 
   def self.table_name=(table_name)
-    @table_name ||= table_name.pluralize
+    @table_name ||= table_name.downcase.underscore.pluralize
   end
 
   def self.table_name
-    @table_name || self.to_s.downcase.pluralize
+    @table_name || self.to_s.downcase.underscore.pluralize
   end
 
   def self.all
     data = DBConnection.instance.execute2(<<-SQL)
-          SELECT
-            *
-          FROM
-          #{@table_name}
-        SQL
+    SELECT
+      *
+    FROM
+      #{@table_name}
+    SQL
     self.parse_all(data)
   end
 
   def self.find(id)
     DBConnection.instance.execute2(<<-SQL)
     SELECT
-      *
+    *
     FROM
-      #{@table_name}
+    #{@table_name}
     WHERE
-      id = #{id}
+    id = #{id}
     SQL
   end
 
@@ -65,18 +59,22 @@ class SQLObject < MassObject
   def insert
     DBConnection.instance.execute2(<<-SQL)
     INSERT INTO
-      #{@table_name}
+    #{@table_name}
     VALUES
       
     SQL
   end
 
-  def initialize(params= {})
+  def initialize(params = {})
+    # {:name=>"cat1", :owner_id=>1}
     params.each do |attr_name, value|
-      raise "unknown attribute '#{attr_name}'" unless self.class.columns.include? attr_name.to_s.pluralize
+      if self.class.columns.include? attr_name
+         self.send(attr_name, value)
+      else
+        raise "unknown attribute '#{attr_name}'"
+      end
     end
   end
-
   def save
     # ...
   end
