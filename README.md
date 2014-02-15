@@ -1,3 +1,3 @@
-After the project, you can review the solution here:
+# README
 
-* https://github.com/appacademy-solutions/active_record_lite/tree/solution
+info goes here
